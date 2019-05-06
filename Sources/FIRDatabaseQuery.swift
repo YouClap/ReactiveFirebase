@@ -1,12 +1,5 @@
-//
-//  spotme
-//  Copyright © 2016 Evan Coleman. All rights reserved.
-//
-
 import FirebaseDatabase
-import ReactiveCocoa
 import ReactiveSwift
-import enum Result.NoError
 
 public extension Reactive where Base: FIRDatabaseQuery {
     

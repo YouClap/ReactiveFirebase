@@ -1,13 +1,43 @@
-//
-//  ReactiveFirebase
-//  Copyright © 2016 Evan Coleman. All rights reserved.
-//
-
 import FirebaseDatabase
-import ReactiveCocoa
 import ReactiveSwift
 
-public extension Reactive where Base: FIRDatabaseReference {
+public extension Reactive where Base: DatabaseReference {
+
+    func observe(_ event: DataEventType = .value, on queueScheduler: Scheduler)
+    -> SignalProducer<DataSnapshot, NSError> {
+        return SignalProducer { observer, lifetime in
+            let observerID = self.base.observe(event, with: { snapshot in
+                observer.send(value: snapshot)
+            }, withCancel: { error in
+                observer.send(error: error as NSError)
+            })
+
+            lifetime.observeEnded { [weak base = self.base] in
+                base?.removeObserver(withHandle: observerID)
+                observer.sendCompleted()
+            }
+            }
+            .observe(on: queueScheduler)
+    }
+
+    var snapshot: SignalProducer<DataSnapshot, NSError> {
+        return SignalProducer { observer, lifetime in
+            self.base.observeSingleEvent(of: .value, with: { snapshot in
+                observer.send(value: snapshot)
+                observer.sendCompleted()
+            }, withCancel: { error in
+                observer.send(error: error as NSError)
+            })
+
+            lifetime.observeEnded {
+                observer.sendCompleted()
+            }
+        }
+    }
+
+    var exists: SignalProducer<Bool, NSError> {
+        return self.snapshot .map { $0.hasChildren() }
+    }
     
     /// A signal that sets the value of this reference. Sends the `FIRDatabaseReference`.
     func set(value: Any?) -> SignalProducer<FIRDatabaseReference, NSError> {
